@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import NotificationItem from '../../components/NotificationItem';
@@ -141,64 +142,69 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Thông báo</Text>
-        {unreadCount > 0 && (
-          <TouchableOpacity
-            style={styles.markAllButton}
-            onPress={handleMarkAllAsRead}
-          >
-            <Text style={styles.markAllText}>Đánh dấu tất cả đã đọc</Text>
-          </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Thông báo</Text>
+          {unreadCount > 0 && (
+            <TouchableOpacity
+              style={styles.markAllButton}
+              onPress={handleMarkAllAsRead}
+            >
+              <Text style={styles.markAllText}>Đánh dấu tất cả đã đọc</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {notifications.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="notifications-off" size={64} color={Colors.lightGrey} />
+            <Text style={styles.emptyTitle}>Không có thông báo</Text>
+            <Text style={styles.emptyMessage}>
+              Bạn sẽ nhận được thông báo khi có hoạt động mới
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={notifications}
+            keyExtractor={(item) => item._id}
+            renderItem={({ item }) => (
+              <NotificationItem
+                notification={item}
+                onPress={handleNotificationPress}
+                onMarkAsRead={handleMarkAsRead}
+              />
+            )}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                colors={[Colors.tint]}
+              />
+            }
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.1}
+            ListFooterComponent={
+              hasMore ? (
+                <View style={styles.loadingMore}>
+                  <Loading size="small" />
+                </View>
+              ) : null
+            }
+          />
         )}
       </View>
-
-      {notifications.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="notifications-off" size={64} color={Colors.lightGrey} />
-          <Text style={styles.emptyTitle}>Không có thông báo</Text>
-          <Text style={styles.emptyMessage}>
-            Bạn sẽ nhận được thông báo khi có hoạt động mới
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={notifications}
-          keyExtractor={(item) => item._id}
-          renderItem={({ item }) => (
-            <NotificationItem
-              notification={item}
-              onPress={handleNotificationPress}
-              onMarkAsRead={handleMarkAsRead}
-            />
-          )}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              colors={[Colors.tint]}
-            />
-          }
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.1}
-          ListFooterComponent={
-            hasMore ? (
-              <View style={styles.loadingMore}>
-                <Loading size="small" />
-              </View>
-            ) : null
-          }
-        />
-      )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
   container: {
     flex: 1,
-    backgroundColor: Colors.white,
   },
   header: {
     flexDirection: 'row',

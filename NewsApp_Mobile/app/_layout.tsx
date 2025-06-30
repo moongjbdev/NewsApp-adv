@@ -7,6 +7,8 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { BookmarkProvider } from '@/contexts/BookmarkContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
+import { NotificationModalProvider } from '@/contexts/NotificationModalContext';
+import NotificationModal from '@/components/NotificationModal';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -27,17 +29,27 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <BookmarkProvider>
-          <NotificationProvider>
-            <Stack>
-              <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            </Stack>
-          </NotificationProvider>
-        </BookmarkProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <NotificationModalProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <BookmarkProvider>
+            <NotificationProvider>
+              <Stack>
+                <Stack.Screen name="index" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              </Stack>
+              <NotificationModalWrapper />
+            </NotificationProvider>
+          </BookmarkProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </NotificationModalProvider>
   );
+}
+
+// Helper to use context in a component outside of navigation
+import { useNotificationModal } from '@/contexts/NotificationModalContext';
+function NotificationModalWrapper() {
+  const { visible, close } = useNotificationModal();
+  return <NotificationModal visible={visible} onClose={close} />;
 }

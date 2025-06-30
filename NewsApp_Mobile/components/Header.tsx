@@ -5,13 +5,17 @@ import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNotification } from '@/contexts/NotificationContext'
-import { router } from 'expo-router'
+import { useNotificationModal } from '@/contexts/NotificationModalContext'
+// import { router } from 'expo-router'
+import { useNavigation } from '@react-navigation/native';
 
 // type Props = {}
 const Header = () => {
     const { colors } = useTheme();
     const { user, isAuthenticated } = useAuth();
     const { unreadCount } = useNotification();
+    const { open } = useNotificationModal();
+    const navigation = useNavigation();
     
     // Get user display name
     const getUserDisplayName = () => {
@@ -31,12 +35,7 @@ const Header = () => {
 
     // Navigate to notifications screen
     const handleNotificationPress = () => {
-        if (isAuthenticated) {
-            router.push('/(tabs)/notifications');
-        } else {
-            // If not authenticated, show login prompt or navigate to login
-            router.push('/auth/login');
-        }
+        open();
     };
     
     return (
