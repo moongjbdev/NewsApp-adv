@@ -235,7 +235,8 @@ const styles = StyleSheet.create({
     },
     commentsContainer: {
         flex: 1,
-        marginTop: 0,
+        marginTop: 20,
+        minHeight: 400,
     },
     articleContainer: {
         flex: 1,

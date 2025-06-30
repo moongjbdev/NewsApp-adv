@@ -8,8 +8,7 @@ const commentSchema = new mongoose.Schema({
   },
   article_id: {
     type: String,
-    required: true,
-    trim: true
+    required: true
   },
   content: {
     type: String,
@@ -47,16 +46,8 @@ const commentSchema = new mongoose.Schema({
 
 // Indexes
 commentSchema.index({ article_id: 1, createdAt: -1 });
+commentSchema.index({ parent_id: 1, createdAt: 1 });
 commentSchema.index({ user: 1, createdAt: -1 });
-commentSchema.index({ parent_id: 1 });
-
-// Virtual for reply count
-commentSchema.virtual('replyCount', {
-  ref: 'Comment',
-  localField: '_id',
-  foreignField: 'parent_id',
-  count: true
-});
 
 // Virtual for like count
 commentSchema.virtual('likeCount').get(function() {

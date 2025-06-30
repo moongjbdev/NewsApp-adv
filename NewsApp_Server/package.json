@@ -11,20 +11,39 @@
     "setup": "node scripts/setup.js",
     "lint": "echo \"No linter configured\"",
     "format": "echo \"No formatter configured\"",
-    "clean": "rm -rf node_modules package-lock.json && npm install"
+    "clean": "rm -rf node_modules package-lock.json && npm install",
+    "test-notifications": "node scripts/test-notifications.js",
+    "test-notification-fixes": "node scripts/test-notification-fixes.js",
+    "test-duplicate-prevention": "node scripts/test-duplicate-prevention.js",
+    "debug-duplicate-issue": "node scripts/debug-duplicate-issue.js",
+    "simple-duplicate-test": "node scripts/simple-duplicate-test.js",
+    "test-reply-notification": "node scripts/test-reply-notification.js",
+    "simple-reply-test": "node scripts/simple-reply-test.js",
+    "test-api-reply": "node scripts/test-api-reply.js",
+    "test-multiple-replies": "node scripts/test-multiple-replies.js"
   },
-  "keywords": ["news", "api", "express", "mongodb", "nodejs", "newsdata", "caching"],
+  "keywords": [
+    "news",
+    "api",
+    "express",
+    "mongodb",
+    "nodejs",
+    "newsdata",
+    "caching"
+  ],
   "author": "moongjbdev",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2",
-    "mongoose": "^7.5.0",
+    "axios": "^1.5.0",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "bcryptjs": "^2.4.3",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
     "jsonwebtoken": "^9.0.2",
-    "axios": "^1.5.0",
-    "express-rate-limit": "^7.1.5"
+    "mongoose": "^7.5.0",
+    "node-cron": "^3.0.3",
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

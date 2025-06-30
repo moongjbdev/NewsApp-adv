@@ -42,7 +42,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ article_id }) => {
     } else {
       setIsLoading(true);
     }
-    
+
     try {
       const response = await commentsAPI.getComments(article_id, page, 20, sortBy);
       const { comments: newComments, pagination } = response.data;
@@ -84,7 +84,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ article_id }) => {
 
       const response = await commentsAPI.addComment(commentData);
       const newCommentData = response.data.comment;
-      
+
       // Add new comment to the list
       setComments(prev => [newCommentData, ...prev]);
       setNewComment('');
@@ -152,7 +152,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ article_id }) => {
             styles.sortButtonText,
             { color: sortBy === sort ? colors.white : colors.darkGrey }
           ]}>
-            {sort === 'newest' ? 'Mới nhất' : sort === 'oldest' ? 'Cũ nhất' : 'Nhiều like'}
+            {sort === 'newest' ? 'Cũ Nhất' : sort === 'oldest' ? 'Mới Nhất' : 'Nhiều like'}
           </Text>
         </TouchableOpacity>
       ))}
@@ -196,8 +196,12 @@ const CommentSection: React.FC<CommentSectionProps> = ({ article_id }) => {
       ) : (
         <ScrollView
           style={styles.commentsList}
-          contentContainerStyle={styles.commentsContent}
-          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.commentsContent,
+            comments.length === 0 && { flex: 1, justifyContent: 'center' }
+          ]}
+          showsVerticalScrollIndicator={true}
+          nestedScrollEnabled={true}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -209,12 +213,18 @@ const CommentSection: React.FC<CommentSectionProps> = ({ article_id }) => {
           onScroll={({ nativeEvent }) => {
             const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
             const paddingToBottom = 20;
-            if (layoutMeasurement.height + contentOffset.y >= 
-                contentSize.height - paddingToBottom) {
+            if (layoutMeasurement.height + contentOffset.y >=
+              contentSize.height - paddingToBottom) {
               handleLoadMore();
             }
           }}
           scrollEventThrottle={400}
+          onLayout={(event) => {
+            console.log('📏 Comments list height:', event.nativeEvent.layout.height);
+          }}
+          onContentSizeChange={(width, height) => {
+            console.log('📏 Comments content size:', width, height);
+          }}
         >
           {comments.map((comment) => (
             <View key={comment._id}>
@@ -222,15 +232,15 @@ const CommentSection: React.FC<CommentSectionProps> = ({ article_id }) => {
                 comment={comment}
                 onCommentUpdate={handleCommentUpdate}
                 onCommentDelete={handleCommentDelete}
-                onReply={() => {}} // Disabled reply functionality
-                onLoadReplies={() => {}} // Disabled reply functionality
+                onReply={() => { }} // Disabled reply functionality
+                onLoadReplies={() => { }} // Disabled reply functionality
                 showReplies={false} // Always false since no replies
               />
             </View>
           ))}
-          
+
           {shouldShowEmptyState && renderEmptyState()}
-          
+
           {isLoading && currentPage > 1 && (
             <ActivityIndicator size="small" color={colors.tint} style={styles.loadingMore} />
           )}
@@ -240,7 +250,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ article_id }) => {
       {isAuthenticated && (
         <View style={[styles.inputContainer, { backgroundColor: colors.cardBackground }]}>
           <TextInput
-            style={[styles.input, { 
+            style={[styles.input, {
               color: colors.black,
               borderColor: colors.borderColor,
               backgroundColor: colors.background
@@ -283,7 +293,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ article_id }) => {
 
 const styles = StyleSheet.create({
   container: {
-    height: 500,
+    flex: 1,
+    minHeight: 400,
   },
   header: {
     padding: 16,
@@ -334,6 +345,7 @@ const styles = StyleSheet.create({
   },
   commentsList: {
     flex: 1,
+    height: 350, // Fixed height to ensure scrolling works
   },
   commentsContent: {
     paddingBottom: 20,

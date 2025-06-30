@@ -37,37 +37,23 @@ const userSchema = new mongoose.Schema({
     default: 'user'
   },
   preferences: {
-    favoriteCategories: [{
-      type: String,
-      trim: true
-    }],
-    language: {
-      type: String,
-      default: 'vi'
-    },
-    country: {
-      type: String,
-      default: 'vi'
-    },
+    favoriteCategories: [String],
+    favoriteCountries: [String],
     theme: {
       type: String,
-      enum: ['light', 'dark'],
-      default: 'light'
+      enum: ['light', 'dark', 'auto'],
+      default: 'auto'
     },
     notifications: {
-      breakingNews: {
-        type: Boolean,
-        default: true
-      },
-      dailyDigest: {
-        type: Boolean,
-        default: false
-      },
-      categoryUpdates: {
-        type: Boolean,
-        default: true
-      }
-    }
+      commentReplies: { type: Boolean, default: true },
+      commentLikes: { type: Boolean, default: true },
+      commentMentions: { type: Boolean, default: true },
+      achievements: { type: Boolean, default: true },
+      dailyDigest: { type: Boolean, default: true },
+      readingReminder: { type: Boolean, default: true },
+      categoryNews: { type: Boolean, default: true }
+    },
+    pushTokens: [String] // For push notifications
   },
   readingStats: {
     totalArticlesRead: {

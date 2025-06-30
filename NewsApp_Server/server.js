@@ -4,6 +4,8 @@ const cors = require('cors');
 const connectDB = require('./config/database');
 const { generalLimiter } = require('./middleware/rateLimit');
 require('dotenv').config();
+const http = require('http');
+const socketService = require('./services/socketService');
 
 const app = express();
 
@@ -25,6 +27,7 @@ app.use('/api/user', require('./routes/user'));
 app.use('/api/user/bookmarks', require('./routes/bookmarks'));
 app.use('/api/news', require('./routes/news'));
 app.use('/api/comments', require('./routes/comments'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Basic route
 app.get('/', (req, res) => {
@@ -62,9 +65,46 @@ app.use('*', (req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 NewsApp Server v2.0 running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 API Base URL: http://localhost:${PORT}`);
+const notificationScheduler = require('./services/scheduler');
+
+const server = http.createServer(app);
+const io = require('socket.io')(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+});
+
+// Initialize socket service
+socketService.initializeSocket(io);
+
+// Export sendRealtimeNotification function for use in other modules
+const { sendRealtimeNotification } = socketService;
+
+module.exports = { app, server, sendRealtimeNotification };
+
+// Start server
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, () => {
+    console.log(`🚀 NewsApp Server v2.0 running on port ${PORT}`);
+    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔗 API Base URL: http://localhost:${PORT}`);
+    
+    // Start notification scheduler
+    notificationScheduler.start();
+  });
+}
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  notificationScheduler.stop();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  notificationScheduler.stop();
+  process.exit(0);
 }); 

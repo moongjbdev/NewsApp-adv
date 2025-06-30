@@ -1,5 +1,6 @@
 const Comment = require('../models/Comment');
 const User = require('../models/User');
+const NotificationGenerator = require('../services/notificationGenerator');
 
 // @desc    Get comments for an article
 // @route   GET /api/comments/:article_id
@@ -28,10 +29,6 @@ const getComments = async (req, res) => {
       isDeleted: false 
     })
       .populate('user', 'username fullName avatar')
-      .populate({
-        path: 'replyCount',
-        match: { isDeleted: false }
-      })
       .sort(sortOption)
       .skip(skip)
       .limit(parseInt(limit));
@@ -57,44 +54,6 @@ const getComments = async (req, res) => {
   }
 };
 
-// @desc    Get replies for a comment
-// @route   GET /api/comments/:comment_id/replies
-// @access  Public
-const getReplies = async (req, res) => {
-  try {
-    const { comment_id } = req.params;
-    const { page = 1, limit = 10 } = req.query;
-    const skip = (page - 1) * limit;
-
-    const replies = await Comment.find({ 
-      parent_id: comment_id, 
-      isDeleted: false 
-    })
-      .populate('user', 'username fullName avatar')
-      .sort({ createdAt: 1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const total = await Comment.countDocuments({ 
-      parent_id: comment_id, 
-      isDeleted: false 
-    });
-
-    res.json({
-      replies,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / limit),
-        totalItems: total,
-        itemsPerPage: parseInt(limit)
-      }
-    });
-  } catch (error) {
-    console.error('Get replies error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
-
 // @desc    Add comment
 // @route   POST /api/comments
 // @access  Private
@@ -114,6 +73,21 @@ const addComment = async (req, res) => {
       });
     }
 
+    // If this is a reply, validate that the parent comment exists
+    if (parent_id) {
+      const parentComment = await Comment.findById(parent_id);
+      if (!parentComment) {
+        return res.status(404).json({ 
+          message: 'Parent comment not found' 
+        });
+      }
+      if (parentComment.isDeleted) {
+        return res.status(400).json({ 
+          message: 'Cannot reply to a deleted comment' 
+        });
+      }
+    }
+
     const comment = new Comment({
       user: req.user._id,
       article_id,
@@ -123,6 +97,40 @@ const addComment = async (req, res) => {
 
     await comment.save();
     await comment.populate('user', 'username fullName avatar');
+
+    // Check for mentions (@username) and generate notifications
+    const mentionRegex = /@(\w+)/g;
+    const mentions = content.match(mentionRegex);
+    if (mentions) {
+      for (const mention of mentions) {
+        const username = mention.substring(1); // Remove @ symbol
+        try {
+          const mentionedUser = await User.findOne({ username });
+          if (mentionedUser && mentionedUser._id.toString() !== req.user._id.toString()) {
+            await NotificationGenerator.generateMentionNotification(comment._id, mentionedUser._id);
+          }
+        } catch (mentionError) {
+          console.error('Error generating mention notification:', mentionError);
+          // Don't fail the request if mention notification fails
+        }
+      }
+    }
+
+    // Generate reply notification if this is a reply
+    if (parent_id) {
+      try {
+        await NotificationGenerator.generateCommentReplyNotification(parent_id, comment._id);
+        console.log('Reply notification generated for comment:', parent_id, 'reply:', comment._id);
+      } catch (replyNotificationError) {
+        console.error('Error generating reply notification:', replyNotificationError);
+        // Don't fail the request if notification fails
+      }
+    }
+
+    // Generate notification for article author (if different from commenter)
+    // Note: This would require article data to get the author
+    // For now, we'll skip this as we don't have article author info
+    // TODO: Add article author notification when article data is available
 
     res.status(201).json({
       message: 'Comment added successfully',
@@ -175,6 +183,24 @@ const updateComment = async (req, res) => {
     await comment.save();
     await comment.populate('user', 'username fullName avatar');
 
+    // Check for new mentions (@username) in updated content and generate notifications
+    const mentionRegex = /@(\w+)/g;
+    const mentions = content.match(mentionRegex);
+    if (mentions) {
+      for (const mention of mentions) {
+        const username = mention.substring(1); // Remove @ symbol
+        try {
+          const mentionedUser = await User.findOne({ username });
+          if (mentionedUser && mentionedUser._id.toString() !== req.user._id.toString()) {
+            await NotificationGenerator.generateMentionNotification(comment._id, mentionedUser._id);
+          }
+        } catch (mentionError) {
+          console.error('Error generating mention notification:', mentionError);
+          // Don't fail the request if mention notification fails
+        }
+      }
+    }
+
     res.json({
       message: 'Comment updated successfully',
       comment
@@ -216,9 +242,10 @@ const deleteComment = async (req, res) => {
 // @desc    Like/Unlike comment
 // @route   POST /api/comments/:comment_id/like
 // @access  Private
-const toggleLike = async (req, res) => {
+const likeComment = async (req, res) => {
   try {
     const { comment_id } = req.params;
+    const { action = 'like' } = req.body;
 
     const comment = await Comment.findById(comment_id);
 
@@ -234,85 +261,109 @@ const toggleLike = async (req, res) => {
     const isLiked = comment.likes.includes(userId);
     const isDisliked = comment.dislikes.includes(userId);
 
-    if (isLiked) {
-      // Unlike
-      comment.likes = comment.likes.filter(id => id.toString() !== userId.toString());
-    } else {
-      // Like
-      comment.likes.push(userId);
-      // Remove from dislikes if exists
+    if (action === 'like') {
+      if (isLiked) {
+        // Unlike
+        comment.likes = comment.likes.filter(id => id.toString() !== userId.toString());
+      } else {
+        // Like
+        comment.likes.push(userId);
+        // Remove from dislikes if present
+        if (isDisliked) {
+          comment.dislikes = comment.dislikes.filter(id => id.toString() !== userId.toString());
+        }
+        
+        // Generate notification for comment owner (only when liking, not unliking)
+        // Don't notify if user is liking their own comment
+        if (comment.user.toString() !== userId.toString()) {
+          // Generate notification in parallel (don't await) for faster response
+          NotificationGenerator.generateCommentLikeNotification(comment_id, userId)
+            .then(() => {
+              console.log('✅ Like notification generated successfully');
+            })
+            .catch((notificationError) => {
+              console.error('❌ Error generating like notification:', notificationError);
+            });
+        }
+      }
+    } else if (action === 'dislike') {
       if (isDisliked) {
+        // Remove dislike
         comment.dislikes = comment.dislikes.filter(id => id.toString() !== userId.toString());
+      } else {
+        // Add dislike
+        comment.dislikes.push(userId);
+        // Remove from likes if present
+        if (isLiked) {
+          comment.likes = comment.likes.filter(id => id.toString() !== userId.toString());
+        }
       }
     }
 
     await comment.save();
 
     res.json({
-      message: isLiked ? 'Comment unliked' : 'Comment liked',
+      message: 'Comment action completed',
       likes: comment.likes.length,
       dislikes: comment.dislikes.length,
-      isLiked: !isLiked
+      isLiked: comment.likes.includes(userId),
+      isDisliked: comment.dislikes.includes(userId)
     });
   } catch (error) {
-    console.error('Toggle like error:', error);
+    console.error('Like comment error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// @desc    Dislike/Undislike comment
-// @route   POST /api/comments/:comment_id/dislike
-// @access  Private
-const toggleDislike = async (req, res) => {
+// @desc    Get replies for a comment
+// @route   GET /api/comments/:comment_id/replies
+// @access  Public
+const getReplies = async (req, res) => {
   try {
     const { comment_id } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (page - 1) * limit;
 
-    const comment = await Comment.findById(comment_id);
-
-    if (!comment) {
+    // Check if the parent comment exists
+    const parentComment = await Comment.findById(comment_id);
+    if (!parentComment) {
       return res.status(404).json({ message: 'Comment not found' });
     }
 
-    if (comment.isDeleted) {
-      return res.status(400).json({ message: 'Cannot dislike deleted comment' });
-    }
+    const replies = await Comment.find({ 
+      parent_id: comment_id, 
+      isDeleted: false 
+    })
+      .populate('user', 'username fullName avatar')
+      .sort({ createdAt: 1 }) // Show oldest replies first
+      .skip(skip)
+      .limit(parseInt(limit));
 
-    const userId = req.user._id;
-    const isLiked = comment.likes.includes(userId);
-    const isDisliked = comment.dislikes.includes(userId);
-
-    if (isDisliked) {
-      // Undislike
-      comment.dislikes = comment.dislikes.filter(id => id.toString() !== userId.toString());
-    } else {
-      // Dislike
-      comment.dislikes.push(userId);
-      // Remove from likes if exists
-      if (isLiked) {
-        comment.likes = comment.likes.filter(id => id.toString() !== userId.toString());
-      }
-    }
-
-    await comment.save();
+    const total = await Comment.countDocuments({ 
+      parent_id: comment_id, 
+      isDeleted: false 
+    });
 
     res.json({
-      message: isDisliked ? 'Comment undisliked' : 'Comment disliked',
-      likes: comment.likes.length,
-      dislikes: comment.dislikes.length,
-      isDisliked: !isDisliked
+      replies,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        itemsPerPage: parseInt(limit)
+      }
     });
   } catch (error) {
-    console.error('Toggle dislike error:', error);
+    console.error('Get replies error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
 module.exports = {
   getComments,
-  getReplies,
   addComment,
   updateComment,
   deleteComment,
-  toggleLike,
-  toggleDislike
+  likeComment,
+  getReplies
 }; 

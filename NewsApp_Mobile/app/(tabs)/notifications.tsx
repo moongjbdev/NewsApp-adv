@@ -16,8 +16,8 @@ import { Loading } from '../../components/Loading';
 import ErrorView from '../../components/ErrorView';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
-import { notificationsAPI } from '../../services/api';
 import { NotificationCategory } from '../../types/notifications';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface Notification {
   _id: string;
@@ -31,33 +31,33 @@ interface Notification {
 
 export default function NotificationsScreen() {
   const { user } = useAuth();
-  const { markAsRead, markAllAsRead, refreshUnreadCount } = useNotification();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const { 
+    notificationList, 
+    markAsRead, 
+    markAllAsRead, 
+    refreshNotificationList,
+    refreshUnreadCount 
+  } = useNotification();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(1);
 
-  const loadNotifications = async (pageNum = 1, refresh = false) => {
+  // Use notifications from context instead of local state
+  const notifications = notificationList;
+
+  const loadNotifications = async (refresh = false) => {
     try {
       setError(null);
       if (refresh) {
         setRefreshing(true);
-      } else if (pageNum === 1) {
+      } else {
         setLoading(true);
       }
 
-      const response = await notificationsAPI.getNotifications(pageNum, 20);
+      // Use context's refresh function
+      await refreshNotificationList();
+      await refreshUnreadCount();
       
-      if (refresh || pageNum === 1) {
-        setNotifications(response.data.notifications);
-      } else {
-        setNotifications(prev => [...prev, ...response.data.notifications]);
-      }
-      
-      setHasMore(response.data.notifications.length === 20);
-      setPage(pageNum);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Không thể tải thông báo');
     } finally {
@@ -66,33 +66,31 @@ export default function NotificationsScreen() {
     }
   };
 
+  // Load notifications on mount
   useEffect(() => {
     if (user) {
       loadNotifications();
     }
   }, [user]);
 
-  const handleRefresh = async () => {
-    await loadNotifications(1, true);
-    await refreshUnreadCount();
-  };
+  // Refresh notifications when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (user) {
+        console.log('🔄 Notifications screen focused, refreshing...');
+        loadNotifications();
+      }
+    }, [user])
+  );
 
-  const handleLoadMore = () => {
-    if (hasMore && !loading) {
-      loadNotifications(page + 1);
-    }
+  const handleRefresh = async () => {
+    await loadNotifications(true);
   };
 
   const handleMarkAsRead = async (id: string) => {
     try {
       await markAsRead(id);
-      setNotifications(prev =>
-        prev.map(notification =>
-          notification._id === id
-            ? { ...notification, isRead: true }
-            : notification
-        )
-      );
+      // Context will handle the state update
     } catch (err: any) {
       Alert.alert('Lỗi', 'Không thể đánh dấu thông báo đã đọc');
     }
@@ -101,9 +99,7 @@ export default function NotificationsScreen() {
   const handleMarkAllAsRead = async () => {
     try {
       await markAllAsRead();
-      setNotifications(prev =>
-        prev.map(notification => ({ ...notification, isRead: true }))
-      );
+      // Context will handle the state update
       Alert.alert('Thành công', 'Đã đánh dấu tất cả thông báo đã đọc');
     } catch (err: any) {
       Alert.alert('Lỗi', 'Không thể đánh dấu tất cả thông báo đã đọc');
@@ -182,15 +178,11 @@ export default function NotificationsScreen() {
                 colors={[Colors.tint]}
               />
             }
-            onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.1}
-            ListFooterComponent={
-              hasMore ? (
-                <View style={styles.loadingMore}>
-                  <Loading size="small" />
-                </View>
-              ) : null
-            }
+            // Remove pagination since we're using context data
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            initialNumToRender={10}
           />
         )}
       </View>
@@ -248,9 +240,5 @@ const styles = StyleSheet.create({
     color: Colors.darkGrey,
     textAlign: 'center',
     lineHeight: 20,
-  },
-  loadingMore: {
-    padding: 16,
-    alignItems: 'center',
   },
 }); 

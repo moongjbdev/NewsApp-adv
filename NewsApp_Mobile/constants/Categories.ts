@@ -7,7 +7,7 @@ const newsCategoryList = [
   },
   {
     id: 2,
-    title: 'Chính Trị',
+    title: 'Xã hội',
     slug: 'politics',
     selected: false,
   },

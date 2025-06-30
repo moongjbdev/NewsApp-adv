@@ -10,6 +10,8 @@ const getCachedNews = async (req, res) => {
     const { category = 'general' } = req.params;
     const { type = 'latest' } = req.query;
 
+    console.log(`📰 Fetching cached news for category: ${category}, type: ${type}`);
+
     // Check cache first
     const cached = await NewsCache.findOne({
       category,
@@ -18,6 +20,7 @@ const getCachedNews = async (req, res) => {
     });
 
     if (cached) {
+      console.log(`✅ Returning cached news for ${category}/${type}`);
       return res.json({
         data: cached.data,
         cached: true,
@@ -25,12 +28,14 @@ const getCachedNews = async (req, res) => {
       });
     }
 
+    console.log(`🔄 Cache expired, fetching fresh data for ${category}/${type}`);
+
     // If not cached, fetch from NewsData.io
     const newsData = await fetchFromNewsData(category, type);
 
     if (newsData) {
-      // Cache the data for 30 minutes
-      const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+      // Cache the data for 60 minutes (increased from 30)
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
       await NewsCache.findOneAndUpdate(
         { category, type },
@@ -42,16 +47,42 @@ const getCachedNews = async (req, res) => {
         { upsert: true, new: true }
       );
 
+      console.log(`✅ Fresh news cached for ${category}/${type}`);
       res.json({
         data: newsData,
         cached: false,
         lastUpdated: new Date()
       });
     } else {
+      console.log(`❌ Failed to fetch news data for ${category}/${type}`);
       res.status(500).json({ message: 'Failed to fetch news data' });
     }
   } catch (error) {
     console.error('Get cached news error:', error);
+    
+    // If it's a 429 error, try to return stale cache
+    if (error.response?.status === 429) {
+      console.log(`⚠️ Rate limit hit, trying to return stale cache`);
+      try {
+        const staleCache = await NewsCache.findOne({
+          category: req.params.category || 'general',
+          type: req.query.type || 'latest'
+        });
+        
+        if (staleCache) {
+          console.log(`✅ Returning stale cache due to rate limit`);
+          return res.json({
+            data: staleCache.data,
+            cached: true,
+            lastUpdated: staleCache.lastUpdated,
+            stale: true
+          });
+        }
+      } catch (staleError) {
+        console.error('Error fetching stale cache:', staleError);
+      }
+    }
+    
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -207,11 +238,31 @@ const fetchFromNewsData = async (category, type) => {
       url += '&size=10';
     }
 
-    const response = await axios.get(url);
+    console.log(`🌐 Fetching from NewsData.io: ${category}/${type}`);
+
+    const response = await axios.get(url, {
+      timeout: 10000, // 10 second timeout
+      headers: {
+        'User-Agent': 'NewsApp/1.0'
+      }
+    });
+
+    console.log(`✅ NewsData.io response received for ${category}/${type}`);
     return response.data;
   } catch (error) {
     console.error('Fetch from NewsData error:', error);
-    return null;
+    
+    if (error.response?.status === 429) {
+      console.log(`⚠️ NewsData.io rate limit exceeded for ${category}/${type}`);
+      throw new Error('Rate limit exceeded');
+    }
+    
+    if (error.code === 'ECONNABORTED') {
+      console.log(`⚠️ NewsData.io request timeout for ${category}/${type}`);
+      throw new Error('Request timeout');
+    }
+    
+    throw error;
   }
 };
 
