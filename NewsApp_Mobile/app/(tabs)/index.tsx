@@ -49,7 +49,7 @@ const Page = (props: Props) => {
   const renderHeader = useMemo(() => (
     <>
       <Header />
-      <SearchBar withHorizontalPadding={true} setSearchQuery={setSearchQuery} />
+      {/* <SearchBar withHorizontalPadding={true} setSearchQuery={setSearchQuery} /> */}
       {isLoading ? (
         <SkeletonLoading count={8} />
       ) : (

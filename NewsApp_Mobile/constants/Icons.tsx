@@ -14,6 +14,12 @@ export const icon = {
     ) : (
       <Ionicons name="compass-outline" size={24} color={color} />
     ),
+  notifications: ({ color, focused }: { color: string; focused: boolean }) =>
+    focused ? (
+      <Ionicons name="notifications" size={24} color={color} />
+    ) : (
+      <Ionicons name="notifications-outline" size={24} color={color} />
+    ),
   saved: ({ color, focused }: { color: string; focused: boolean }) =>
     focused ? (
       <Ionicons name="bookmarks" size={24} color={color} />

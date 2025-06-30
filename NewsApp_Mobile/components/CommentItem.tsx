@@ -92,12 +92,12 @@ const CommentItem: React.FC<CommentItemProps> = ({
   };
 
   const handleEdit = () => {
-    setIsEditing(true);
     setEditContent(comment.content);
+    setIsEditing(true);
   };
 
   const handleSaveEdit = async () => {
-    if (editContent.trim().length === 0) {
+    if (!editContent.trim()) {
       Alert.alert('Lỗi', 'Nội dung bình luận không được để trống');
       return;
     }
@@ -146,14 +146,6 @@ const CommentItem: React.FC<CommentItemProps> = ({
     );
   };
 
-  const handleReply = () => {
-    if (!user) {
-      Alert.alert('Thông báo', 'Vui lòng đăng nhập để trả lời bình luận');
-      return;
-    }
-    onReply(comment._id, comment.user.username);
-  };
-
   const formatTime = (dateString: string) => {
     const now = moment();
     const commentTime = moment(dateString);
@@ -171,36 +163,49 @@ const CommentItem: React.FC<CommentItemProps> = ({
   if (isEditing) {
     return (
       <View style={[styles.container, { backgroundColor: colors.cardBackground }]}>
-        <View style={styles.editContainer}>
-          <TextInput
-            style={[styles.editInput, { 
-              color: colors.black,
-              borderColor: colors.borderColor,
-              backgroundColor: colors.background
-            }]}
-            value={editContent}
-            onChangeText={setEditContent}
-            multiline
-            maxLength={1000}
-            placeholder="Chỉnh sửa bình luận..."
-            placeholderTextColor={colors.darkGrey}
-          />
-          <View style={styles.editActions}>
-            <TouchableOpacity
-              style={[styles.editButton, { backgroundColor: colors.lightGrey }]}
-              onPress={handleCancelEdit}
-              disabled={isLoading}
-            >
-              <Text style={[styles.editButtonText, { color: colors.black }]}>Hủy</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.editButton, { backgroundColor: colors.tint }]}
-              onPress={handleSaveEdit}
-              disabled={isLoading}
-            >
-              <Text style={[styles.editButtonText, { color: colors.white }]}>Lưu</Text>
-            </TouchableOpacity>
+        <View style={styles.header}>
+          <View style={styles.userInfo}>
+            <Text style={[styles.username, { color: colors.black }]}>
+              {comment.user.fullName || comment.user.username}
+            </Text>
+            <Text style={[styles.timestamp, { color: colors.darkGrey }]}>
+              {formatTime(comment.createdAt)}
+            </Text>
           </View>
+        </View>
+        
+        <TextInput
+          style={[styles.editInput, { 
+            color: colors.black,
+            borderColor: colors.borderColor,
+            backgroundColor: colors.background
+          }]}
+          value={editContent}
+          onChangeText={setEditContent}
+          multiline
+          maxLength={1000}
+          editable={!isLoading}
+        />
+        
+        <View style={styles.editActions}>
+          <TouchableOpacity
+            style={[styles.editButton, { backgroundColor: colors.tint }]}
+            onPress={handleSaveEdit}
+            disabled={isLoading}
+          >
+            <Text style={[styles.editButtonText, { color: colors.white }]}>
+              Lưu
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.editButton, { backgroundColor: colors.lightGrey }]}
+            onPress={handleCancelEdit}
+            disabled={isLoading}
+          >
+            <Text style={[styles.editButtonText, { color: colors.darkGrey }]}>
+              Hủy
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -210,21 +215,15 @@ const CommentItem: React.FC<CommentItemProps> = ({
     <View style={[styles.container, { backgroundColor: colors.cardBackground }]}>
       <View style={styles.header}>
         <View style={styles.userInfo}>
-          <View style={[styles.avatar, { backgroundColor: colors.tint }]}>
-            <Text style={[styles.avatarText, { color: colors.white }]}>
-              {comment.user.fullName?.charAt(0) || comment.user.username.charAt(0)}
-            </Text>
-          </View>
-          <View style={styles.userDetails}>
-            <Text style={[styles.username, { color: colors.black }]}>
-              {comment.user.fullName || comment.user.username}
-            </Text>
-            <Text style={[styles.timestamp, { color: colors.darkGrey }]}>
-              {formatTime(comment.createdAt)}
-              {comment.isEdited && ' (đã chỉnh sửa)'}
-            </Text>
-          </View>
+          <Text style={[styles.username, { color: colors.black }]}>
+            {comment.user.fullName || comment.user.username}
+          </Text>
+          <Text style={[styles.timestamp, { color: colors.darkGrey }]}>
+            {formatTime(comment.createdAt)}
+            {comment.isEdited && ' (đã chỉnh sửa)'}
+          </Text>
         </View>
+        
         {isOwnComment && (
           <View style={styles.actions}>
             <TouchableOpacity onPress={handleEdit} style={styles.actionButton}>
@@ -236,11 +235,11 @@ const CommentItem: React.FC<CommentItemProps> = ({
           </View>
         )}
       </View>
-
+      
       <Text style={[styles.content, { color: colors.black }]}>
         {comment.content}
       </Text>
-
+      
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.actionItem, isLiked && styles.activeAction]}
@@ -275,24 +274,6 @@ const CommentItem: React.FC<CommentItemProps> = ({
             {dislikeCount}
           </Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionItem} onPress={handleReply}>
-          <Ionicons name="chatbubble-outline" size={16} color={colors.darkGrey} />
-          <Text style={[styles.actionText, { color: colors.darkGrey }]}>
-            Trả lời
-          </Text>
-        </TouchableOpacity>
-
-        {comment.replyCount > 0 && (
-          <TouchableOpacity 
-            style={styles.actionItem} 
-            onPress={() => onLoadReplies(comment._id)}
-          >
-            <Text style={[styles.actionText, { color: colors.tint }]}>
-              {showReplies ? 'Ẩn' : `Xem ${comment.replyCount} trả lời`}
-            </Text>
-          </TouchableOpacity>
-        )}
       </View>
     </View>
   );
@@ -300,14 +281,9 @@ const CommentItem: React.FC<CommentItemProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 12,
     padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginBottom: 8,
+    borderRadius: 8,
   },
   header: {
     flexDirection: 'row',
@@ -316,23 +292,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  userDetails: {
     flex: 1,
   },
   username: {
@@ -345,38 +304,15 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
+    gap: 8,
   },
   actionButton: {
     padding: 4,
-    marginLeft: 8,
   },
   content: {
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 12,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  actionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 16,
-  },
-  activeAction: {
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-  },
-  actionText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  editContainer: {
-    gap: 12,
   },
   editInput: {
     borderWidth: 1,
@@ -385,20 +321,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minHeight: 80,
     textAlignVertical: 'top',
+    marginBottom: 12,
   },
   editActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
     gap: 8,
   },
   editButton: {
-    paddingVertical: 8,
     paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 6,
   },
   editButtonText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
+  },
+  footer: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  actionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  activeAction: {
+    // Additional styling for active state if needed
+  },
+  actionText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
 });
 

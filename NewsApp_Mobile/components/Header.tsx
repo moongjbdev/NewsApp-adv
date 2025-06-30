@@ -4,11 +4,14 @@ import React from "react"
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native"
 import { useTheme } from '@/contexts/ThemeContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { useNotification } from '@/contexts/NotificationContext'
+import { router } from 'expo-router'
 
 // type Props = {}
 const Header = () => {
     const { colors } = useTheme();
     const { user, isAuthenticated } = useAuth();
+    const { unreadCount } = useNotification();
     
     // Get user display name
     const getUserDisplayName = () => {
@@ -24,6 +27,16 @@ const Header = () => {
             return { uri: user.avatar };
         }
         return null; // Will show default icon
+    };
+
+    // Navigate to notifications screen
+    const handleNotificationPress = () => {
+        if (isAuthenticated) {
+            router.push('/(tabs)/notifications');
+        } else {
+            // If not authenticated, show login prompt or navigate to login
+            router.push('/auth/login');
+        }
     };
     
     return (
@@ -46,8 +59,18 @@ const Header = () => {
                 </View>
             </View>
 
-            <TouchableOpacity onPress={() => { }}>
+            <TouchableOpacity 
+                onPress={handleNotificationPress}
+                style={styles.notificationButton}
+            >
                 <Ionicons name="notifications-outline" size={24} color={colors.black} />
+                {unreadCount > 0 && (
+                    <View style={[styles.badge, { backgroundColor: colors.tint }]}>
+                        <Text style={styles.badgeText}>
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                        </Text>
+                    </View>
+                )}
             </TouchableOpacity>
         </View>
     )
@@ -85,5 +108,28 @@ const styles = StyleSheet.create({
     usernameText: {
         fontSize: 14,
         fontWeight: '700',
+    },
+    notificationButton: {
+        position: 'relative',
+        padding: 4,
+    },
+    badge: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        minWidth: 18,
+        height: 18,
+        borderRadius: 9,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+        borderWidth: 2,
+        borderColor: Colors.white,
+    },
+    badgeText: {
+        color: Colors.white,
+        fontSize: 10,
+        fontWeight: 'bold',
+        textAlign: 'center',
     }
 })

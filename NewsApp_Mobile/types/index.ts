@@ -41,12 +41,10 @@ export interface CommentType {
   };
   article_id: string;
   content: string;
-  parent_id?: string;
   likes: string[];
   dislikes: string[];
   likeCount: number;
   dislikeCount: number;
-  replyCount: number;
   isEdited: boolean;
   editedAt?: string;
   isDeleted: boolean;

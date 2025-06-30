@@ -146,13 +146,9 @@ export const commentsAPI = {
   getComments: (article_id: string, page = 1, limit = 20, sort = 'newest') =>
     api.get(`/comments/${article_id}?page=${page}&limit=${limit}&sort=${sort}`),
 
-  getReplies: (comment_id: string, page = 1, limit = 10) =>
-    api.get(`/comments/${comment_id}/replies?page=${page}&limit=${limit}`),
-
   addComment: (data: {
     article_id: string;
     content: string;
-    parent_id?: string;
   }) => api.post('/comments', data),
 
   updateComment: (comment_id: string, data: { content: string }) =>
@@ -162,10 +158,34 @@ export const commentsAPI = {
     api.delete(`/comments/${comment_id}`),
 
   toggleLike: (comment_id: string) =>
-    api.post(`/comments/${comment_id}/like`),
+    api.post(`/comments/${comment_id}/like`, { action: 'like' }),
 
   toggleDislike: (comment_id: string) =>
-    api.post(`/comments/${comment_id}/dislike`),
+    api.post(`/comments/${comment_id}/like`, { action: 'dislike' }),
+};
+
+// Notifications API
+export const notificationsAPI = {
+  getNotifications: (page = 1, limit = 20) =>
+    api.get(`/notifications?page=${page}&limit=${limit}`),
+
+  markAsRead: (notification_id: string) =>
+    api.put(`/notifications/${notification_id}/read`),
+
+  markAllAsRead: () =>
+    api.put('/notifications/read-all'),
+
+  deleteNotification: (notification_id: string) =>
+    api.delete(`/notifications/${notification_id}`),
+
+  getUnreadCount: () =>
+    api.get('/notifications/unread-count'),
+
+  getSettings: () =>
+    api.get('/notifications/settings'),
+
+  updateSettings: (settings: any) =>
+    api.put('/notifications/settings', settings),
 };
 
 export default api; 

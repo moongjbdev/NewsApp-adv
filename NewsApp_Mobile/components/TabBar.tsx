@@ -34,7 +34,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         position: 'absolute',
         backgroundColor: colors.tint,
         top: 56,
-        left: 34,
+        left: 24,
         height: 4,
         width: 30,
         borderRadius: 2,

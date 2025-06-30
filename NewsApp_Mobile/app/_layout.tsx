@@ -6,6 +6,7 @@ import 'react-native-reanimated';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { BookmarkProvider } from '@/contexts/BookmarkContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -29,10 +30,12 @@ export default function RootLayout() {
     <ThemeProvider>
       <AuthProvider>
         <BookmarkProvider>
-          <Stack>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack>
+          <NotificationProvider>
+            <Stack>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            </Stack>
+          </NotificationProvider>
         </BookmarkProvider>
       </AuthProvider>
     </ThemeProvider>

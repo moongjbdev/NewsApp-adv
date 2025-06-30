@@ -35,8 +35,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ article_id }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'mostLiked'>('newest');
-  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
-  const [replies, setReplies] = useState<Record<string, CommentType[]>>({});
 
   const fetchComments = useCallback(async (page = 1, refresh = false) => {
     if (page === 1 && !refresh) {
@@ -66,16 +64,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ article_id }) => {
     }
   }, [article_id, sortBy]);
 
-  const fetchReplies = useCallback(async (commentId: string) => {
-    try {
-      const response = await commentsAPI.getReplies(commentId, 1, 10);
-      const { replies: newReplies } = response.data;
-      setReplies(prev => ({ ...prev, [commentId]: newReplies }));
-    } catch (error) {
-      console.log('Error fetching replies:', error);
-    }
-  }, []);
-
   const handleSubmitComment = async () => {
     if (!isAuthenticated) {
       Alert.alert('Thông báo', 'Vui lòng đăng nhập để bình luận');
@@ -89,12 +77,15 @@ const CommentSection: React.FC<CommentSectionProps> = ({ article_id }) => {
 
     setIsSubmitting(true);
     try {
-      const response = await commentsAPI.addComment({
+      const commentData = {
         article_id,
         content: newComment.trim(),
-      });
+      };
 
+      const response = await commentsAPI.addComment(commentData);
       const newCommentData = response.data.comment;
+      
+      // Add new comment to the list
       setComments(prev => [newCommentData, ...prev]);
       setNewComment('');
     } catch (error) {
@@ -117,27 +108,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ article_id }) => {
 
   const handleCommentDelete = (commentId: string) => {
     setComments(prev => prev.filter(comment => comment._id !== commentId));
-  };
-
-  const handleReply = (commentId: string, username: string) => {
-    setNewComment(`@${username} `);
-    // Focus on input (you might need to add ref to TextInput)
-  };
-
-  const handleLoadReplies = (commentId: string) => {
-    const isExpanded = expandedReplies.has(commentId);
-    if (isExpanded) {
-      setExpandedReplies(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(commentId);
-        return newSet;
-      });
-    } else {
-      setExpandedReplies(prev => new Set(prev).add(commentId));
-      if (!replies[commentId]) {
-        fetchReplies(commentId);
-      }
-    }
   };
 
   const handleLoadMore = () => {
@@ -210,7 +180,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ article_id }) => {
     </View>
   );
 
-  // Don't show empty state immediately, wait a bit
   const shouldShowEmptyState = comments.length === 0 && !isInitialLoading && !isLoading;
 
   return (
@@ -229,7 +198,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ article_id }) => {
           style={styles.commentsList}
           contentContainerStyle={styles.commentsContent}
           showsVerticalScrollIndicator={false}
-          nestedScrollEnabled={true}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -254,25 +222,10 @@ const CommentSection: React.FC<CommentSectionProps> = ({ article_id }) => {
                 comment={comment}
                 onCommentUpdate={handleCommentUpdate}
                 onCommentDelete={handleCommentDelete}
-                onReply={handleReply}
-                onLoadReplies={handleLoadReplies}
-                showReplies={expandedReplies.has(comment._id)}
+                onReply={() => {}} // Disabled reply functionality
+                onLoadReplies={() => {}} // Disabled reply functionality
+                showReplies={false} // Always false since no replies
               />
-              {expandedReplies.has(comment._id) && replies[comment._id] && (
-                <View style={styles.repliesContainer}>
-                  {replies[comment._id].map(reply => (
-                    <View key={reply._id} style={styles.replyItem}>
-                      <CommentItem
-                        comment={reply}
-                        onCommentUpdate={handleCommentUpdate}
-                        onCommentDelete={handleCommentDelete}
-                        onReply={handleReply}
-                        onLoadReplies={() => {}}
-                      />
-                    </View>
-                  ))}
-                </View>
-              )}
             </View>
           ))}
           
@@ -361,13 +314,6 @@ const styles = StyleSheet.create({
   sortButtonText: {
     fontSize: 12,
     fontWeight: '500',
-  },
-  repliesContainer: {
-    marginLeft: 32,
-    marginTop: 8,
-  },
-  replyItem: {
-    marginBottom: 8,
   },
   emptyContainer: {
     alignItems: 'center',

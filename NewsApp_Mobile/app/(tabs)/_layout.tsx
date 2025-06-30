@@ -18,6 +18,12 @@ const TabLayout = () => {
         }}
       />
       <Tabs.Screen
+        name="notifications"
+        options={{
+          title: "Thông Báo",
+        }}
+      />
+      <Tabs.Screen
         name="saved"
         options={{
           title: "Yêu Thích",
