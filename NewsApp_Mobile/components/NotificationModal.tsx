@@ -6,6 +6,7 @@ import { NotificationType } from '@/types/notifications';
 import moment from 'moment';
 import 'moment/locale/vi';
 import { useNotification } from '@/contexts/NotificationContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NotificationModalProps {
   visible: boolean;
@@ -30,14 +31,15 @@ const formatTime = (dateString: string) => {
 const NotificationModal: React.FC<NotificationModalProps> = ({ visible, onClose }) => {
   const { colors } = useTheme();
   const { notificationList, refreshNotificationList, markAsRead, markAllAsRead } = useNotification();
+  const { isAuthenticated } = useAuth();
 
-  // Refresh notifications when modal opens
+  // Refresh notifications when modal opens (only if logged in)
   useEffect(() => {
-    if (visible) {
+    if (visible && isAuthenticated) {
       console.log('🔄 Modal opened, refreshing notifications...');
       refreshNotificationList();
     }
-  }, [visible, refreshNotificationList]);
+  }, [visible, refreshNotificationList, isAuthenticated]);
 
   const handleMarkAsRead = async (id: string) => {
     try {
@@ -79,13 +81,13 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ visible, onClose 
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={[styles.modal, { backgroundColor: colors.cardBackground, shadowColor: colors.black }]}> 
-          <View style={styles.header}>
+      <View style={[styles.overlay, { backgroundColor: colors.background + 'CC' }]}>
+        <View style={[styles.modal, { backgroundColor: colors.cardBackground, shadowColor: colors.shadowColor, borderColor: colors.borderColor }]}> 
+          <View style={[styles.header, { borderBottomColor: colors.borderColor }]}> 
             <View style={styles.headerLeft}>
               <Text style={[styles.title, { color: colors.black }]}>Thông báo</Text>
               {unreadCount > 0 && (
-                <View style={[styles.badge, { backgroundColor: colors.tint }]}>
+                <View style={[styles.badge, { backgroundColor: colors.tint }]}> 
                   <Text style={styles.badgeText}>{unreadCount}</Text>
                 </View>
               )}
@@ -104,67 +106,76 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ visible, onClose 
               </TouchableOpacity>
             </View>
           </View>
-          <FlatList
-            data={notificationList}
-            keyExtractor={item => item._id}
-            renderItem={({ item }) => (
-              <TouchableOpacity 
-                style={[
-                  styles.item, 
-                  !item.isRead && { backgroundColor: colors.tint + '08' }
-                ]}
-                onPress={() => handleNotificationPress(item)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.itemContent}>
-                  <View style={styles.itemHeader}>
-                    <Text style={[
-                      styles.itemTitle, 
-                      { color: colors.black },
-                      !item.isRead && { fontWeight: '600' }
-                    ]} numberOfLines={2}>
-                      {item.title}
-                    </Text>
-                    <TouchableOpacity 
-                      style={styles.checkbox}
-                      onPress={() => handleMarkAsRead(item._id)}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      <Ionicons 
-                        name={item.isRead ? "checkbox" : "square-outline"} 
-                        size={20} 
-                        color={item.isRead ? colors.tint : colors.darkGrey} 
-                      />
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={[styles.itemMessage, { color: colors.darkGrey }]} numberOfLines={3}>
-                    {item.message}
-                  </Text>
-                  <View style={styles.itemFooter}>
-                    <Text style={[styles.itemTime, { color: colors.darkGrey }]}>
-                      {formatTime(item.createdAt)}
-                    </Text>
-                    {!item.isRead && (
-                      <View style={[styles.unreadDot, { backgroundColor: colors.tint }]} />
-                    )}
-                  </View>
-                </View>
+          {!isAuthenticated ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="lock-closed-outline" size={48} color={colors.lightGrey} />
+              <Text style={[styles.emptyText, { color: colors.darkGrey, marginTop: 12, fontSize: 16, textAlign: 'center' }]}>Bạn cần đăng nhập để xem thông báo</Text>
+              <TouchableOpacity style={[styles.loginButton, { backgroundColor: colors.tint, marginTop: 20 }]} onPress={onClose}>
+                <Text style={[styles.loginButtonText, { color: colors.white }]}>Đóng</Text>
               </TouchableOpacity>
-            )}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Ionicons name="notifications-off" size={48} color={colors.lightGrey} />
-                <Text style={[styles.emptyText, { color: colors.darkGrey }]}>
-                  Không có thông báo nào
-                </Text>
-              </View>
-            }
-            contentContainerStyle={{ paddingBottom: 16 }}
-            removeClippedSubviews={true}
-            maxToRenderPerBatch={10}
-            windowSize={10}
-            initialNumToRender={10}
-          />
+            </View>
+          ) : (
+            <FlatList
+              data={notificationList}
+              keyExtractor={item => item._id}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  style={[
+                    styles.item, 
+                    { borderBottomColor: colors.borderColor, backgroundColor: colors.cardBackground },
+                    !item.isRead && { backgroundColor: colors.tint + '18' }
+                  ]}
+                  onPress={() => handleNotificationPress(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.itemContent}>
+                    <View style={styles.itemHeader}>
+                      <Text style={[
+                        styles.itemTitle, 
+                        { color: colors.black },
+                        !item.isRead && { fontWeight: '600' }
+                      ]} numberOfLines={2}>
+                        {item.title}
+                      </Text>
+                      <TouchableOpacity 
+                        style={styles.checkbox}
+                        onPress={() => handleMarkAsRead(item._id)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Ionicons 
+                          name={item.isRead ? "checkbox" : "square-outline"} 
+                          size={20} 
+                          color={item.isRead ? colors.tint : colors.darkGrey} 
+                        />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={[styles.itemMessage, { color: colors.darkGrey }]} numberOfLines={3}>
+                      {item.message}
+                    </Text>
+                    <View style={styles.itemFooter}>
+                      <Text style={[styles.itemTime, { color: colors.darkGrey }]}> 
+                        {formatTime(item.createdAt)}
+                      </Text>
+                      {!item.isRead && (
+                        <View style={[styles.unreadDot, { backgroundColor: colors.tint }]} />
+                      )}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="notifications-off" size={48} color={colors.lightGrey} />
+                  <Text style={[styles.emptyText, { color: colors.darkGrey }]}>Không có thông báo nào</Text>
+                </View>
+              }
+              contentContainerStyle={{ paddingBottom: 16, backgroundColor: colors.cardBackground }}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={10}
+              windowSize={10}
+              initialNumToRender={10}
+            />
+          )}
         </View>
       </View>
     </Modal>
@@ -291,6 +302,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginTop: 12,
+  },
+  loginButton: {
+    marginTop: 16,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  loginButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

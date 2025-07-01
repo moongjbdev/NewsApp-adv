@@ -16,12 +16,14 @@ interface NotificationItemProps {
   };
   onPress: (notification: any) => void;
   onMarkAsRead: (id: string) => void;
+  themeColors: typeof Colors.light;
 }
 
 const NotificationItem: React.FC<NotificationItemProps> = ({
   notification,
   onPress,
-  onMarkAsRead
+  onMarkAsRead,
+  themeColors
 }) => {
   const getIcon = () => {
     switch (notification.type) {
@@ -47,7 +49,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
   const getIconColor = () => {
     switch (notification.type) {
       case 'comment_reply':
-        return Colors.tint;
+        return themeColors.tint;
       case 'comment_like':
         return '#FF6B6B';
       case 'comment_mention':
@@ -59,9 +61,9 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
       case 'reading_reminder':
         return '#FFA500';
       case 'category_news':
-        return Colors.tint;
+        return themeColors.tint;
       default:
-        return Colors.darkGrey;
+        return themeColors.darkGrey;
     }
   };
 
@@ -80,28 +82,29 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
     <TouchableOpacity
       style={[
         styles.container,
-        !notification.isRead && styles.unread
+        { backgroundColor: themeColors.cardBackground, borderBottomColor: themeColors.borderColor },
+        !notification.isRead && { backgroundColor: themeColors.tint + '18' }
       ]}
       onPress={() => onPress(notification)}
       onLongPress={() => onMarkAsRead(notification._id)}
     >
-      <View style={styles.iconContainer}>
+      <View style={[styles.iconContainer, { backgroundColor: themeColors.background }]}>
         <Ionicons 
           name={getIcon() as any} 
           size={24} 
           color={getIconColor()} 
         />
-        {!notification.isRead && <View style={styles.unreadDot} />}
+        {!notification.isRead && <View style={[styles.unreadDot, { backgroundColor: themeColors.tint }]} />}
       </View>
       
       <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={2}>
+        <Text style={[styles.title, { color: themeColors.black }]} numberOfLines={2}>
           {notification.title}
         </Text>
-        <Text style={styles.message} numberOfLines={3}>
+        <Text style={[styles.message, { color: themeColors.darkGrey }]} numberOfLines={3}>
           {notification.message}
         </Text>
-        <Text style={styles.time}>
+        <Text style={[styles.time, { color: themeColors.lightGrey }]}>
           {formatTime(notification.createdAt)}
         </Text>
       </View>
@@ -113,7 +116,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
         <Ionicons 
           name={notification.isRead ? 'checkmark-circle' : 'ellipse-outline'} 
           size={20} 
-          color={notification.isRead ? '#4CAF50' : Colors.lightGrey} 
+          color={notification.isRead ? '#4CAF50' : themeColors.lightGrey} 
         />
       </TouchableOpacity>
     </TouchableOpacity>

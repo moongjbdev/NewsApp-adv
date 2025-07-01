@@ -37,4 +37,28 @@ export const DEFAULT_API_PARAMS = {
   country: 'vi',
   image: 1,
   removeduplicate: 1,
+};
+
+// App Configuration
+export const APP_CONFIG = {
+  name: 'NewsApp',
+  version: '1.0.0',
+  buildNumber: '1',
+  environment: __DEV__ ? 'development' : 'production',
+};
+
+// Feature Flags
+export const FEATURE_FLAGS = {
+  enableNotifications: true,
+  enableComments: true,
+  enableBookmarks: true,
+  enableAnalytics: true,
+  enableRealtimeUpdates: true,
+};
+
+// Cache Configuration
+export const CACHE_CONFIG = {
+  newsCacheDuration: 60 * 60 * 1000, // 1 hour
+  userDataCacheDuration: 30 * 60 * 1000, // 30 minutes
+  maxCacheSize: 50 * 1024 * 1024, // 50MB
 }; 

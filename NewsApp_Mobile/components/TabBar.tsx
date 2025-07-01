@@ -1,4 +1,4 @@
-import { View, StyleSheet, LayoutChangeEvent } from "react-native";
+import { View, StyleSheet, LayoutChangeEvent, Alert } from "react-native";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import TabBarButton from "@/components/TabBarButton";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
@@ -6,9 +6,11 @@ import { useState } from "react";
 import { Colors } from "@/constants/Colors";
 import React from "react";
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { colors } = useTheme();
+  const { isAuthenticated } = useAuth();
   const [dimensions, setDimensions] = useState({ height: 20, width: 100 });
 
   const buttonWidth = dimensions.width / state.routes.length;
@@ -51,7 +53,14 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
         const isFocused = state.index === index;
 
+        // Đảm bảo label là string để tránh lỗi
+        const labelStr = typeof label === 'string' ? label : route.name;
+
         const onPress = () => {
+          if ((route.name.toLowerCase().includes('notification') || labelStr.toLowerCase().includes('thông báo')) && !isAuthenticated) {
+            Alert.alert('Yêu cầu đăng nhập', 'Bạn cần đăng nhập để xem thông báo.');
+            return;
+          }
           tabPositionX.value = withTiming(buttonWidth * index, {
             duration: 200,
           });
@@ -81,7 +90,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             onLongPress={onLongPress}
             isFocused={isFocused}
             routeName={route.name}
-            label={typeof label === 'string' ? label : route.name}
+            label={labelStr}
           />
         );
       })}

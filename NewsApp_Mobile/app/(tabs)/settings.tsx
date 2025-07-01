@@ -126,7 +126,7 @@ const Page = (props: Props) => {
                           {userStats.totalBookmarks || 0}
                         </Text>
                         <Text style={[styles.statLabel, { color: colors.darkGrey }]}>
-                          Bookmark
+                          Đã lưu
                         </Text>
                       </View>
                       <View style={styles.statItem}>

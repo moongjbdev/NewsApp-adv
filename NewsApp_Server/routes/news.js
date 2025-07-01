@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { externalAPILimiter } = require('../middleware/rateLimit');
 const { auth } = require('../middleware/auth');
 const {
   getCachedNews,
@@ -10,8 +11,8 @@ const {
 } = require('../controllers/newsController');
 
 // Public routes
-router.get('/cached/:category', getCachedNews);
-router.get('/breaking', getBreakingNews);
+router.get('/cached/:category', externalAPILimiter, getCachedNews);
+router.get('/breaking', externalAPILimiter, getBreakingNews);
 router.get('/popular', getPopularArticles);
 
 // Protected routes (analytics)

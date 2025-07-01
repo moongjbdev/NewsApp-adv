@@ -98,7 +98,7 @@ export const userAPI = {
 // Bookmarks API
 export const bookmarksAPI = {
   getBookmarks: (page = 1, limit = 20) =>
-    api.get(`/user/bookmarks?page=${page}&limit=${limit}`),
+    api.get(`/bookmarks?page=${page}&limit=${limit}`),
 
   addBookmark: (articleData: {
     article_id: string;
@@ -110,15 +110,15 @@ export const bookmarksAPI = {
     link: string;
     category?: string[];
     pubDate?: string;
-  }) => api.post('/user/bookmarks', articleData),
+  }) => api.post('/bookmarks', articleData),
 
   removeBookmark: (article_id: string) =>
-    api.delete(`/user/bookmarks/${article_id}`),
+    api.delete(`/bookmarks/${article_id}`),
 
   checkBookmark: (article_id: string) =>
-    api.get(`/user/bookmarks/check/${article_id}`),
+    api.get(`/bookmarks/check/${article_id}`),
 
-  clearBookmarks: () => api.delete('/user/bookmarks'),
+  clearBookmarks: () => api.delete('/bookmarks'),
 };
 
 // News API

@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { NotificationCategory } from '../../types/notifications';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface Notification {
   _id: string;
@@ -31,6 +32,7 @@ interface Notification {
 
 export default function NotificationsScreen() {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const { 
     notificationList, 
     markAsRead, 
@@ -138,27 +140,25 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Thông báo</Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={["top", "left", "right"]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { borderBottomColor: colors.borderColor }]}>
+          <Text style={[styles.title, { color: colors.black }]}>Thông báo</Text>
           {unreadCount > 0 && (
             <TouchableOpacity
-              style={styles.markAllButton}
+              style={[styles.markAllButton, { backgroundColor: colors.tint }]}
               onPress={handleMarkAllAsRead}
             >
-              <Text style={styles.markAllText}>Đánh dấu tất cả đã đọc</Text>
+              <Text style={[styles.markAllText, { color: colors.white }]}>Đánh dấu tất cả đã đọc</Text>
             </TouchableOpacity>
           )}
         </View>
 
         {notifications.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="notifications-off" size={64} color={Colors.lightGrey} />
-            <Text style={styles.emptyTitle}>Không có thông báo</Text>
-            <Text style={styles.emptyMessage}>
-              Bạn sẽ nhận được thông báo khi có hoạt động mới
-            </Text>
+            <Ionicons name="notifications-off" size={64} color={colors.lightGrey} />
+            <Text style={[styles.emptyTitle, { color: colors.black }]}>Không có thông báo</Text>
+            <Text style={[styles.emptyMessage, { color: colors.darkGrey }]}>Bạn sẽ nhận được thông báo khi có hoạt động mới</Text>
           </View>
         ) : (
           <FlatList
@@ -169,16 +169,16 @@ export default function NotificationsScreen() {
                 notification={item}
                 onPress={handleNotificationPress}
                 onMarkAsRead={handleMarkAsRead}
+                themeColors={colors}
               />
             )}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                colors={[Colors.tint]}
+                colors={[colors.tint]}
               />
             }
-            // Remove pagination since we're using context data
             removeClippedSubviews={true}
             maxToRenderPerBatch={10}
             windowSize={10}

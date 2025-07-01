@@ -13,13 +13,14 @@ const getCachedNews = async (req, res) => {
     console.log(`📰 Fetching cached news for category: ${category}, type: ${type}`);
 
     // Check cache first
-    const cached = await NewsCache.findOne({
+    let cached = await NewsCache.findOne({
       category,
       type,
-      expiresAt: { $gt: new Date() }
+      // Bỏ kiểm tra expiresAt để luôn lấy cache nếu có
     });
 
-    if (cached) {
+    // Nếu cache còn hạn thì trả luôn
+    if (cached && cached.expiresAt > new Date()) {
       console.log(`✅ Returning cached news for ${category}/${type}`);
       return res.json({
         data: cached.data,
@@ -28,14 +29,33 @@ const getCachedNews = async (req, res) => {
       });
     }
 
-    console.log(`🔄 Cache expired, fetching fresh data for ${category}/${type}`);
+    console.log(`🔄 Cache expired or not found, fetching fresh data for ${category}/${type}`);
 
-    // If not cached, fetch from NewsData.io
-    const newsData = await fetchFromNewsData(category, type);
+    // Nếu cache hết hạn, vẫn giữ lại để fallback nếu call NewsData.io lỗi
+    let staleCache = cached;
+
+    // If not cached or cache expired, fetch from NewsData.io
+    let newsData;
+    try {
+      newsData = await fetchFromNewsData(category, type);
+    } catch (error) {
+      console.error('Fetch from NewsData.io error:', error);
+      // Nếu bị lỗi (kể cả 429), trả về cache cũ nếu có
+      if (staleCache) {
+        console.log(`⚠️ Returning stale cache due to NewsData.io error`);
+        return res.json({
+          data: staleCache.data,
+          cached: true,
+          lastUpdated: staleCache.lastUpdated,
+          stale: true
+        });
+      }
+      return res.status(500).json({ message: 'Failed to fetch news data' });
+    }
 
     if (newsData) {
-      // Cache the data for 60 minutes (increased from 30)
-      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+      // Cache the data for 10 minutes (phù hợp demo)
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
       await NewsCache.findOneAndUpdate(
         { category, type },
@@ -53,36 +73,20 @@ const getCachedNews = async (req, res) => {
         cached: false,
         lastUpdated: new Date()
       });
+    } else if (staleCache) {
+      // Nếu không lấy được newsData nhưng có cache cũ thì trả về cache cũ
+      console.log(`⚠️ Returning stale cache as fallback`);
+      res.json({
+        data: staleCache.data,
+        cached: true,
+        lastUpdated: staleCache.lastUpdated,
+        stale: true
+      });
     } else {
-      console.log(`❌ Failed to fetch news data for ${category}/${type}`);
       res.status(500).json({ message: 'Failed to fetch news data' });
     }
   } catch (error) {
     console.error('Get cached news error:', error);
-    
-    // If it's a 429 error, try to return stale cache
-    if (error.response?.status === 429) {
-      console.log(`⚠️ Rate limit hit, trying to return stale cache`);
-      try {
-        const staleCache = await NewsCache.findOne({
-          category: req.params.category || 'general',
-          type: req.query.type || 'latest'
-        });
-        
-        if (staleCache) {
-          console.log(`✅ Returning stale cache due to rate limit`);
-          return res.json({
-            data: staleCache.data,
-            cached: true,
-            lastUpdated: staleCache.lastUpdated,
-            stale: true
-          });
-        }
-      } catch (staleError) {
-        console.error('Error fetching stale cache:', staleError);
-      }
-    }
-    
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -92,13 +96,13 @@ const getCachedNews = async (req, res) => {
 // @access  Public
 const getBreakingNews = async (req, res) => {
   try {
-    const cached = await NewsCache.findOne({
+    let cached = await NewsCache.findOne({
       category: 'general',
       type: 'breaking',
-      expiresAt: { $gt: new Date() }
+      // Bỏ kiểm tra expiresAt để luôn lấy cache nếu có
     });
 
-    if (cached) {
+    if (cached && cached.expiresAt > new Date()) {
       return res.json({
         data: cached.data,
         cached: true,
@@ -106,11 +110,26 @@ const getBreakingNews = async (req, res) => {
       });
     }
 
-    // Fetch breaking news
-    const newsData = await fetchFromNewsData('general', 'breaking');
+    let staleCache = cached;
+    let newsData;
+    try {
+      newsData = await fetchFromNewsData('general', 'breaking');
+    } catch (error) {
+      console.error('Fetch from NewsData.io error:', error);
+      if (staleCache) {
+        return res.json({
+          data: staleCache.data,
+          cached: true,
+          lastUpdated: staleCache.lastUpdated,
+          stale: true
+        });
+      }
+      return res.status(500).json({ message: 'Failed to fetch breaking news' });
+    }
 
     if (newsData) {
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes for breaking news
+      // Cache breaking news for 5 phút (phù hợp demo)
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
       await NewsCache.findOneAndUpdate(
         { category: 'general', type: 'breaking' },
@@ -126,6 +145,13 @@ const getBreakingNews = async (req, res) => {
         data: newsData,
         cached: false,
         lastUpdated: new Date()
+      });
+    } else if (staleCache) {
+      res.json({
+        data: staleCache.data,
+        cached: true,
+        lastUpdated: staleCache.lastUpdated,
+        stale: true
       });
     } else {
       res.status(500).json({ message: 'Failed to fetch breaking news' });
@@ -223,7 +249,12 @@ const getPopularArticles = async (req, res) => {
 // Helper function to fetch from NewsData.io
 const fetchFromNewsData = async (category, type) => {
   try {
-    const API_KEY = process.env.NEWSDATA_API_KEY || 'pub_78ea72dff8f24d26a18fd0a926ff5d30';
+    const API_KEY = process.env.NEWSDATA_API_KEY;
+    
+    if (!API_KEY) {
+      throw new Error('NEWSDATA_API_KEY not configured');
+    }
+    
     const baseUrl = 'https://newsdata.io/api/1/latest';
 
     let url = `${baseUrl}?apikey=${API_KEY}&language=vi&country=vi&image=1&removeduplicate=1`;
