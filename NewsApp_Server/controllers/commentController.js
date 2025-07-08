@@ -23,20 +23,20 @@ const getComments = async (req, res) => {
         sortOption = { createdAt: -1 };
     }
 
-    const comments = await Comment.find({ 
-      article_id, 
-      parent_id: null, 
-      isDeleted: false 
+    const comments = await Comment.find({
+      article_id,
+      parent_id: null,
+      isDeleted: false
     })
       .populate('user', 'username fullName avatar')
       .sort(sortOption)
       .skip(skip)
       .limit(parseInt(limit));
 
-    const total = await Comment.countDocuments({ 
-      article_id, 
-      parent_id: null, 
-      isDeleted: false 
+    const total = await Comment.countDocuments({
+      article_id,
+      parent_id: null,
+      isDeleted: false
     });
 
     res.json({
@@ -62,14 +62,14 @@ const addComment = async (req, res) => {
     const { article_id, content, parent_id } = req.body;
 
     if (!article_id || !content || content.trim().length === 0) {
-      return res.status(400).json({ 
-        message: 'Article ID and content are required' 
+      return res.status(400).json({
+        message: 'Article ID and content are required'
       });
     }
 
     if (content.length > 1000) {
-      return res.status(400).json({ 
-        message: 'Comment content cannot exceed 1000 characters' 
+      return res.status(400).json({
+        message: 'Comment content cannot exceed 1000 characters'
       });
     }
 
@@ -77,13 +77,13 @@ const addComment = async (req, res) => {
     if (parent_id) {
       const parentComment = await Comment.findById(parent_id);
       if (!parentComment) {
-        return res.status(404).json({ 
-          message: 'Parent comment not found' 
+        return res.status(404).json({
+          message: 'Parent comment not found'
         });
       }
       if (parentComment.isDeleted) {
-        return res.status(400).json({ 
-          message: 'Cannot reply to a deleted comment' 
+        return res.status(400).json({
+          message: 'Cannot reply to a deleted comment'
         });
       }
     }
@@ -151,14 +151,14 @@ const updateComment = async (req, res) => {
     const { content } = req.body;
 
     if (!content || content.trim().length === 0) {
-      return res.status(400).json({ 
-        message: 'Content is required' 
+      return res.status(400).json({
+        message: 'Content is required'
       });
     }
 
     if (content.length > 1000) {
-      return res.status(400).json({ 
-        message: 'Comment content cannot exceed 1000 characters' 
+      return res.status(400).json({
+        message: 'Comment content cannot exceed 1000 characters'
       });
     }
 
@@ -272,9 +272,8 @@ const likeComment = async (req, res) => {
         if (isDisliked) {
           comment.dislikes = comment.dislikes.filter(id => id.toString() !== userId.toString());
         }
-        
-        // Generate notification for comment owner (only when liking, not unliking)
-        // Don't notify if user is liking their own comment
+
+        //check trùng
         if (comment.user.toString() !== userId.toString()) {
           // Generate notification in parallel (don't await) for faster response
           NotificationGenerator.generateCommentLikeNotification(comment_id, userId)
@@ -296,6 +295,18 @@ const likeComment = async (req, res) => {
         // Remove from likes if present
         if (isLiked) {
           comment.likes = comment.likes.filter(id => id.toString() !== userId.toString());
+        }
+
+        //check trùng
+        if (comment.user.toString() !== userId.toString()) {
+          // Generate notification in parallel (don't await) for faster response
+          NotificationGenerator.generateCommentDislikeNotification(comment_id, userId)
+            .then(() => {
+              console.log('✅ Dislike notification generated successfully');
+            })
+            .catch((notificationError) => {
+              console.error('❌ Error generating dislike notification:', notificationError);
+            });
         }
       }
     }
@@ -330,18 +341,18 @@ const getReplies = async (req, res) => {
       return res.status(404).json({ message: 'Comment not found' });
     }
 
-    const replies = await Comment.find({ 
-      parent_id: comment_id, 
-      isDeleted: false 
+    const replies = await Comment.find({
+      parent_id: comment_id,
+      isDeleted: false
     })
       .populate('user', 'username fullName avatar')
       .sort({ createdAt: 1 }) // Show oldest replies first
       .skip(skip)
       .limit(parseInt(limit));
 
-    const total = await Comment.countDocuments({ 
-      parent_id: comment_id, 
-      isDeleted: false 
+    const total = await Comment.countDocuments({
+      parent_id: comment_id,
+      isDeleted: false
     });
 
     res.json({

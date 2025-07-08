@@ -9,21 +9,21 @@ class NotificationGenerator {
   // Generate comment reply notification
   static async generateCommentReplyNotification(commentId, replyCommentId) {
     try {
-      console.log(`🔔 Generating reply notification for comment ${commentId}, reply ${replyCommentId}`);
-      
+      // console.log(`🔔 Generating reply notification for comment ${commentId}, reply ${replyCommentId}`);
+
       const comment = await Comment.findById(commentId).populate('user', 'username fullName');
       const reply = await Comment.findById(replyCommentId).populate('user', 'username fullName');
-      
+
       if (!comment) {
         console.error(`❌ Parent comment ${commentId} not found`);
         return null;
       }
-      
+
       if (!reply) {
         console.error(`❌ Reply comment ${replyCommentId} not found`);
         return null;
       }
-      
+
       if (comment.user._id.toString() === reply.user._id.toString()) {
         console.log(`⏭️ Skipping notification - user replying to their own comment`);
         return null;
@@ -83,7 +83,7 @@ class NotificationGenerator {
     try {
       const comment = await Comment.findById(commentId).populate('user', 'username fullName');
       const likedByUser = await User.findById(likedByUserId).select('username fullName');
-      
+
       if (!comment || !likedByUser || comment.user._id.toString() === likedByUserId) {
         return;
       }
@@ -101,7 +101,7 @@ class NotificationGenerator {
         }
       };
 
-      // Try to find existing notification first
+      // Try to find existing notification
       const existingNotification = await Notification.findOne({
         user_id: comment.user._id,
         type: 'comment_like',
@@ -135,12 +135,68 @@ class NotificationGenerator {
     }
   }
 
+  // Generate comment dislike notification
+  static async generateCommentDislikeNotification(commentId, dislikedByUserId) {
+    try {
+      const comment = await Comment.findById(commentId).populate('user', 'username fullName');
+      const dislikedByUser = await User.findById(dislikedByUserId).select('username fullName');
+
+      if (!comment || !dislikedByUser || comment.user._id.toString() === dislikedByUserId) {
+        return;
+      }
+
+      const notificationData = {
+        user_id: comment.user._id,
+        type: 'comment_dislike',
+        title: 'Có người dislike bình luận của bạn',
+        message: `${dislikedByUser.fullName || dislikedByUser.username} đã dislike bình luận của bạn`,
+        data: {
+          article_id: comment.article_id,
+          comment_id: commentId,
+          user_id: dislikedByUserId
+        }
+      };
+
+      // Try to find existing notification first
+      const existingNotification = await Notification.findOne({
+        user_id: comment.user._id,
+        type: 'comment_dislike',
+        $or: [
+          {
+            'data.comment_id': commentId.toString(),
+            'data.user_id': dislikedByUserId.toString()
+          },
+          {
+            'data.comment_id': commentId,
+            'data.user_id': dislikedByUserId
+          }
+        ]
+      });
+
+      if (existingNotification) {
+        console.log('Duplicate dislike notification prevented for comment:', commentId, 'by user:', dislikedByUserId);
+        return existingNotification;
+      }
+
+      // Create new notification
+      const notification = new Notification(notificationData);
+      await notification.save();
+      console.log('Dislike notification created for comment:', commentId, 'by user:', dislikedByUserId);
+
+      // Emit realtime notification
+      sendRealtimeNotification(comment.user._id.toString(), notification);
+      return notification;
+    } catch (error) {
+      console.error('Error generating dislike notification:', error); throw error; // Re-throw to handle in controller
+    }
+  }
+
   // Generate mention notification
   static async generateMentionNotification(commentId, mentionedUserId) {
     try {
       const comment = await Comment.findById(commentId).populate('user', 'username fullName');
       const mentionedUser = await User.findById(mentionedUserId).select('username fullName');
-      
+
       if (!comment || !mentionedUser || comment.user._id.toString() === mentionedUserId) {
         return;
       }
@@ -169,7 +225,7 @@ class NotificationGenerator {
   static async generateReadingAchievementNotification(userId, achievementType, value) {
     try {
       let title, message;
-      
+
       switch (achievementType) {
         case 'reading_streak':
           title = 'Thành tích đọc tin tức!';
@@ -210,7 +266,7 @@ class NotificationGenerator {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       // Get user's reading stats for today
       const readingCount = await ReadingHistory.countDocuments({
         user: userId,
@@ -283,7 +339,7 @@ class NotificationGenerator {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const readingCount = await ReadingHistory.countDocuments({
         user: userId,
         readAt: { $gte: today }
@@ -314,7 +370,7 @@ class NotificationGenerator {
   static async checkAndGenerateAchievements(userId) {
     try {
       const user = await User.findById(userId);
-      
+
       // Check reading streak
       const readingStreak = await this.calculateReadingStreak(userId);
       if (readingStreak >= 7 && readingStreak % 7 === 0) {
@@ -342,10 +398,10 @@ class NotificationGenerator {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       let streak = 0;
       let currentDate = new Date(today);
-      
+
       while (true) {
         const hasRead = await ReadingHistory.exists({
           user: userId,
@@ -354,7 +410,7 @@ class NotificationGenerator {
             $lt: new Date(currentDate.getTime() + 24 * 60 * 60 * 1000)
           }
         });
-        
+
         if (hasRead) {
           streak++;
           currentDate.setDate(currentDate.getDate() - 1);
@@ -362,7 +418,7 @@ class NotificationGenerator {
           break;
         }
       }
-      
+
       return streak;
     } catch (error) {
       console.error('Error calculating reading streak:', error);

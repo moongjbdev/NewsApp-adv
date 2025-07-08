@@ -11,14 +11,14 @@ const requiredEnvVars = ['JWT_SECRET', 'NEWSDATA_API_KEY'];
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
 if (missingVars.length > 0) {
-  console.error('❌ Missing required environment variables:', missingVars.join(', '));
+  console.error(' Missing required environment variables:', missingVars.join(', '));
   console.error('Please check your .env file and ensure all required variables are set.');
   process.exit(1);
 }
 
 // Validate JWT_SECRET strength
 if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
-  console.error('❌ JWT_SECRET is too short. Please use at least 32 characters for security.');
+  console.error('JWT_SECRET is too short. Please use at least 32 characters for security.');
   process.exit(1);
 }
 
@@ -56,8 +56,8 @@ app.use('/api/notifications', require('./routes/notifications'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
   });
@@ -66,8 +66,8 @@ app.get('/health', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ 
-    message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message 
+  res.status(500).json({
+    message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
   });
 });
 

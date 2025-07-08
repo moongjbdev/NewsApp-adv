@@ -13,6 +13,7 @@ const notificationSchema = new mongoose.Schema({
       'breaking_news',
       'comment_reply',
       'comment_like',
+      'comment_dislike',
       'comment_mention',
       'bookmark_update',
       'daily_digest',

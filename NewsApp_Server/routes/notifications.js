@@ -14,7 +14,7 @@ const { auth } = require('../middleware/auth');
 const notificationScheduler = require('../services/scheduler');
 const NotificationGenerator = require('../services/notificationGenerator');
 
-// All routes require authentication
+// Check đăng nhập chưa
 router.use(auth);
 
 // Get user notifications
@@ -48,7 +48,7 @@ router.post('/test/daily-digest', async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Admin access required' });
     }
-    
+
     const result = await notificationScheduler.triggerDailyDigest();
     res.json(result);
   } catch (error) {
@@ -62,7 +62,7 @@ router.post('/test/reading-reminder', async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Admin access required' });
     }
-    
+
     const result = await notificationScheduler.triggerReadingReminder();
     res.json(result);
   } catch (error) {
@@ -76,7 +76,7 @@ router.post('/test/achievement-check', async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Admin access required' });
     }
-    
+
     const result = await notificationScheduler.triggerAchievementCheck();
     res.json(result);
   } catch (error) {
@@ -89,11 +89,11 @@ router.post('/test/achievement-check', async (req, res) => {
 router.post('/test/comment-like', async (req, res) => {
   try {
     const { comment_id, liked_by_user_id } = req.body;
-    
+
     if (!comment_id || !liked_by_user_id) {
       return res.status(400).json({ message: 'comment_id and liked_by_user_id are required' });
     }
-    
+
     const result = await NotificationGenerator.generateCommentLikeNotification(comment_id, liked_by_user_id);
     res.json({ success: true, notification: result });
   } catch (error) {
@@ -106,11 +106,11 @@ router.post('/test/comment-like', async (req, res) => {
 router.post('/test/comment-reply', async (req, res) => {
   try {
     const { comment_id, reply_comment_id } = req.body;
-    
+
     if (!comment_id || !reply_comment_id) {
       return res.status(400).json({ message: 'comment_id and reply_comment_id are required' });
     }
-    
+
     const result = await NotificationGenerator.generateCommentReplyNotification(comment_id, reply_comment_id);
     res.json({ success: true, notification: result });
   } catch (error) {
